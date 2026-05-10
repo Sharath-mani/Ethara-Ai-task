@@ -1,0 +1,80 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  projectMembers ProjectMember[]
+  createdProjects Project[]       @relation("ProjectCreator")
+  assignedTasks  Task[]           @relation("TaskAssignee")
+  createdTasks   Task[]           @relation("TaskCreator")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String
+  createdBy   User     @relation("ProjectCreator", fields: [createdById], references: [id])
+
+  members ProjectMember[]
+  tasks   Task[]
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  joinedAt  DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    String?
+  dueDate     DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  assigneeId  String
+  assignee    User     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+
+  createdById String
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id])
+}
